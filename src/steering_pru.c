@@ -22,7 +22,7 @@ Many Thanks to Youngtae Jo! https://groups.google.com/forum/#!topic/beagleboard/
 #define OFFSET_SHAREDRAM 2048		//equivalent with 0x00002000
 
 #define PRUSS0_SHARED_DATARAM    4
-#define SAMPLING_RATE 16000 //16khz
+#define SAMPLING_RATE 1000 //1khz
 #define BUFF_LENGTH SAMPLING_RATE
 #define PRU_SHARED_BUFF_SIZE 500
 #define CNT_ONE_SEC SAMPLING_RATE / PRU_SHARED_BUFF_SIZE
@@ -39,6 +39,7 @@ static unsigned int ProcessingADC1(unsigned int value);
 ******************************************************************************/
 static void *sharedMem;
 static unsigned int *sharedMem_int;
+const char SLOTS[] = "/sys/devices/bone_capemgr.9/slots";
 
 /******************************************************************************
 * Main                                                                        * 
@@ -46,8 +47,8 @@ static unsigned int *sharedMem_int;
 int main (int argc, char* argv[])
 {
 	FILE *fp_out;
-    unsigned int ret;
-    tpruss_intc_initdata pruss_intc_initdata = PRUSS_INTC_INITDATA;
+  unsigned int ret;
+  tpruss_intc_initdata pruss_intc_initdata = PRUSS_INTC_INITDATA;
 	int i = 0, cnt = 0, total_cnt = 0;
 	int target_buff = 1;
 	int sampling_period = 0;
@@ -57,23 +58,25 @@ int main (int argc, char* argv[])
 		printf("\t       %s [sampling period]\n", argv[0]);
 		return 0;
 	}
+
 	sampling_period = atoi(argv[1]);
 
 	/* Enable PRU */
 	Enable_PRU();
 	/* Enable ADC */
 	Enable_ADC();
+
 	/* Initializing PRU */
-    prussdrv_init();
-    ret = prussdrv_open(PRU_EVTOUT_0);
-    if (ret){
-        printf("\tERROR: prussdrv_open open failed\n");
-        return (ret);
-    }
-    prussdrv_pruintc_init(&pruss_intc_initdata);
-    printf("\tINFO: Initializing.\r\n");
-    prussdrv_map_prumem(PRUSS0_SHARED_DATARAM, &sharedMem);
-    sharedMem_int = (unsigned int*) sharedMem;
+  prussdrv_init();
+  ret = prussdrv_open(PRU_EVTOUT_0);
+  if (ret){
+      printf("\tERROR: prussdrv_open open failed\n");
+      return (ret);
+  }
+  prussdrv_pruintc_init(&pruss_intc_initdata);
+  printf("\tINFO: Initializing.\r\n");
+  prussdrv_map_prumem(PRUSS0_SHARED_DATARAM, &sharedMem);
+  sharedMem_int = (unsigned int*) sharedMem;
 	
 	/* Open save file */
 	fp_out = fopen("Results.txt", "w");
@@ -84,8 +87,9 @@ int main (int argc, char* argv[])
 
 	/* Executing PRU. */
 	printf("\tINFO: Sampling is started for %d seconds\n", sampling_period);
-    printf("\tINFO: Collecting");
-    prussdrv_exec_program (PRU_NUM, "./steering_pru.bin");
+  printf("\tINFO: Collecting");
+  prussdrv_exec_program (PRU_NUM, "./steering_pru.bin");
+
 	/* Read ADC */
 	while(1){
 		while(1){
@@ -117,14 +121,14 @@ int main (int argc, char* argv[])
 	}
 
 	fclose(fp_out);
-    printf("\tINFO: PRU completed transfer.\r\n");
-    prussdrv_pru_clear_event (PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
+  printf("\tINFO: PRU completed transfer.\r\n");
+  prussdrv_pru_clear_event (PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
 
-    /* Disable PRU*/
-    prussdrv_pru_disable(PRU_NUM);
-    prussdrv_exit();
+  /* Disable PRU*/
+  prussdrv_pru_disable(PRU_NUM);
+  prussdrv_exit();
 
-    return(0);
+  return(0);
 }
 
 /*****************************************************************************
@@ -135,9 +139,9 @@ static void Enable_ADC()
 {
 	FILE *ain;
 
-	ain = fopen("/sys/devices/bone_capemgr.9/slots", "w");
+	ain = fopen(SLOTS, "w");
 	if(!ain){
-		printf("\tERROR: /sys/devices/bone_capemgr.9/slots open failed\n");
+		printf("\tERROR: $SLOTS open failed\n");
 		return -1;
 	}
 	fseek(ain, 0, SEEK_SET);
@@ -150,9 +154,9 @@ static void Enable_PRU()
 {
 		FILE *ain;
 
-		ain = fopen("/sys/devices/bone_capemgr.9/slots", "w");
+		ain = fopen(SLOTS, "w");
 		if(!ain){
-			printf("\tERROR: /sys/devices/bone_capemgr.9/slots open failed\n");
+			printf("\tERROR: $SLOTS open failed\n");
 			return -1;
 		}
 		fseek(ain, 0, SEEK_SET);
