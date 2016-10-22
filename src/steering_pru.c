@@ -160,7 +160,7 @@ static void Enable_PRU()
 			return -1;
 		}
 		fseek(ain, 0, SEEK_SET);
-		fprintf(ain, "BB-BONE-PRU-01");
+		fprintf(ain, "PRU-STEERING");
 		fflush(ain);
 }
 

@@ -2,4 +2,4 @@
 
 echo "Compiling the overlay from .dts to .dtbo"
 
-dtc -O dtb -o PRU-STEERING-OVERLAY-00A0.dtbo -b 0 -@ PRU-STEERING-OVERLAY.dts
+dtc -O dtb -o PRU-STEERING-00A0.dtbo -b 0 -@ PRU-STEERING.dts
