@@ -14,9 +14,7 @@
 
 #include "steering_pru.hp"
 
-#define BUFF_SIZE 0x00000FA0 //Total buff size: 4kbyte(Each buffer has 2kbyte: 500 piece of data)
-#define HALF_SIZE BUFF_SIZE / 2
-
+#define ADC_SAMPLE_NO 8
 #define SAMPLING_RATE 1000 //Sampling rate(1khz)
 #define DELAY_MICRO_SECONDS (1000000 / SAMPLING_RATE) //Delay by sampling rate
 #define CLOCK 200000000 // PRU is always clocked at 200MHz
@@ -30,47 +28,45 @@
         QBNE DELAY, r10, 0
 .endm
 
-.macro READADC
-    //Initialize buffer status (0: empty, 1: first buffer is ready, 2: second buffer is ready)
-    MOV r2, 0
-    SBCO r2, CONST_PRUSHAREDRAM, 0, 4 
+//switch off the steering control pins
+.macro SWITCH_OFF 
+    CLR r30.t5    
+    CLR r30.t3    
+.endm
 
-    INITV:
-        MOV r5, 0 //Shared RAM address of ADC Saving position 
-        MOV r6, BUFF_SIZE  //Counting variable 
+.macro CLOCKWISE
+    SET r30.t5
+    CLR r30.t3
+.endm
 
-    READ:
-        //Read ADC from FIFO0DATA
-        MOV r2, 0x44E0D100 
-        LBBO r3, r2, 0, 4 
-        //Add address counting
-        ADD r5, r5, 4
-        //Write ADC to PRU Shared RAM
-        SBCO r3, CONST_PRUSHAREDRAM, r5, 4 
+.macro ANTICLOCKWISE
+    CLR r30.t5
+    SET r30.t3
+.endm
 
-        DELAY
+.macro READ_SETPOINT
+    LBCO &r0, CONST_PRUSHAREDRAM, 0, 4 ;first two bytes provide the steering setpoint
+//    LBB0 r1, CONST_PRUSHAREDRAM, 2, 2 ;second two bytes provide the mode
+    SUB r6, r0, 5
+    ADD r7, r0, 5
+
+.endm
+
+
+.macro READADC ;reads the ADC a number of times and averages the values
+  MOV r4, ADC_SAMPLE_NO
+  MOV r5, 0
+  
+READ:
+      //Read ADC from FIFO0DATA
+      MOV r2, 0x44E0D100 
+      LBBO r3, r2, 0, 4
+      ADD r5, r5,r3;add up the readings 
+      DELAY
         
-        SUB r6, r6, 4
-        MOV r2, HALF_SIZE
-        QBEQ CHBUFFSTATUS1, r6, r2 //If first buffer is ready
-        QBEQ CHBUFFSTATUS2, r6, 0 //If second buffer is ready
-        QBA READ
-
-    //Change buffer status to 1
-    CHBUFFSTATUS1:
-        MOV r2, 1 
-        SBCO r2, CONST_PRUSHAREDRAM, 0, 4
-        QBA READ
-
-    //Change buffer status to 2
-    CHBUFFSTATUS2:
-        MOV r2, 2
-        SBCO r2, CONST_PRUSHAREDRAM, 0, 4
-        QBA INITV
-
-    //Send event to host program
-    MOV r31.b0, PRU0_ARM_INTERRUPT+16 
-    HALT
+      SUB r4, r4,1
+      QBEQ READ, r4, 0
+      LSR r5, r5, 3
 .endm
 
 // Starting point
@@ -99,9 +95,22 @@ START:
     MOV r2, 0x44E0D064
     MOV r3, 0x00000001 //continuous mode
     SBBO r3, r2, 0, 4
-
-    //Read ADC and FIFOCOUNT
+    
+    READ_SETPOINT
     READADC
 
+    QBGT LEFT, r7,r5
+    QBLT RIGHT,r6,r5
 
+LEFT:
+    CLOCKWISE
+    JMP END
+RIGHT:
+    ANTICLOCKWISE
+    JMP END
+END:
+    ;SWITCH_OFF   
+    //Send event to host program
+    MOV r31.b0, PRU0_ARM_INTERRUPT+16 
+    HALT
 

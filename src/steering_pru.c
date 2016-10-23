@@ -46,7 +46,7 @@ const char SLOTS[] = "/sys/devices/bone_capemgr.9/slots";
 ******************************************************************************/
 int main (int argc, char* argv[])
 {
-	FILE *fp_out;
+	//FILE *fp_out;
   unsigned int ret;
   tpruss_intc_initdata pruss_intc_initdata = PRUSS_INTC_INITDATA;
 	int i = 0, cnt = 0, total_cnt = 0;
@@ -78,21 +78,24 @@ int main (int argc, char* argv[])
   prussdrv_map_prumem(PRUSS0_SHARED_DATARAM, &sharedMem);
   sharedMem_int = (unsigned int*) sharedMem;
 	
-	/* Open save file */
+	/* Open save file 
 	fp_out = fopen("Results.txt", "w");
 	if(fp_out == NULL){
 		printf("\tERROR: file open failed\n");
 		return 0;
 	}
+  */
 
 	/* Executing PRU. */
-	printf("\tINFO: Sampling is started for %d seconds\n", sampling_period);
-  printf("\tINFO: Collecting");
+	printf("Writing to ADC\n");
   prussdrv_exec_program (PRU_NUM, "./steering_pru.bin");
-
+  sharedMem_int[OFFSET_SHAREDRAM] = (2048 << 16);
+  usleep(1000000);
 	/* Read ADC */
-	while(1){
-		while(1){
+	/*
+  while(1){
+	
+    while(1){
 			if(sharedMem_int[OFFSET_SHAREDRAM] == 1 && target_buff == 1){ // First buffer is ready
 				for(i=0; i<PRU_SHARED_BUFF_SIZE; i++){
 					fprintf(fp_out, "%d\n", ProcessingADC1(sharedMem_int[OFFSET_SHAREDRAM + 1 + i]));
@@ -118,9 +121,10 @@ int main (int argc, char* argv[])
 			printf("\n\tINFO: Sampling completed ...\n");
 			break;
 		}
-	}
+	
+  }*/
 
-	fclose(fp_out);
+	//fclose(fp_out);
   printf("\tINFO: PRU completed transfer.\r\n");
   prussdrv_pru_clear_event (PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
 
