@@ -89,8 +89,8 @@ int main (int argc, char* argv[])
 	/* Executing PRU. */
 	printf("Writing to ADC\n");
   prussdrv_exec_program (PRU_NUM, "./steering_pru.bin");
-  sharedMem_int[OFFSET_SHAREDRAM] = (2048 << 16);
-  usleep(1000000);
+  sharedMem_int[OFFSET_SHAREDRAM] = sampling_period << 16;
+  usleep(100000);
 	/* Read ADC */
 	/*
   while(1){

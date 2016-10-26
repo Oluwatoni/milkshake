@@ -45,7 +45,7 @@
 .endm
 
 .macro READ_SETPOINT
-    LBCO &r0, CONST_PRUSHAREDRAM, 0, 4 ;first two bytes provide the steering setpoint
+    LBCO r0, CONST_PRUSHAREDRAM, 0, 4 ;first two bytes provide the steering setpoint
 //    LBB0 r1, CONST_PRUSHAREDRAM, 2, 2 ;second two bytes provide the mode
     SUB r6, r0, 5
     ADD r7, r0, 5
