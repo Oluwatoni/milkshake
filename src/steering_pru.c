@@ -1,5 +1,6 @@
 /*include Files                                                               *
 Many Thanks to Youngtae Jo! https://groups.google.com/forum/#!topic/beagleboard/0a4tszlq2y0
+Oluwatoni Ogunmade
 ******************************************************************************/
 // Standard header files
 #include <stdio.h>
@@ -51,7 +52,7 @@ int main (int argc, char* argv[])
   tpruss_intc_initdata pruss_intc_initdata = PRUSS_INTC_INITDATA;
 	int i = 0, cnt = 0, total_cnt = 0;
 	int target_buff = 1;
-	int sampling_period = 0;
+	unsigned int sampling_period = 0;
 
 	if(argc != 2){
 		printf("\tERROR: Sampling period is required by second\n");
@@ -75,59 +76,19 @@ int main (int argc, char* argv[])
   }
   prussdrv_pruintc_init(&pruss_intc_initdata);
   printf("\tINFO: Initializing.\r\n");
-  prussdrv_map_prumem(PRUSS0_SHARED_DATARAM, &sharedMem);
-  sharedMem_int = (unsigned int*) sharedMem;
-	
-	/* Open save file 
-	fp_out = fopen("Results.txt", "w");
-	if(fp_out == NULL){
-		printf("\tERROR: file open failed\n");
-		return 0;
-	}
-  */
-
-	/* Executing PRU. */
-	printf("Writing to ADC\n");
+  	
+  /* Executing PRU. */
+  printf("Writing to ADC\n");
+  prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, &sampling_period, 4);
+  prussdrv_map_prumem(PRUSS0_PRU0_DATARAM, &sharedMem);
+  sharedMem_int = (unsigned int* )sharedMem;
+  *(sharedMem_int+1) = 0;
   prussdrv_exec_program (PRU_NUM, "./steering_pru.bin");
-  sharedMem_int[OFFSET_SHAREDRAM] = sampling_period << 16;
-  usleep(100000);
-	/* Read ADC */
-	/*
-  while(1){
-	
-    while(1){
-			if(sharedMem_int[OFFSET_SHAREDRAM] == 1 && target_buff == 1){ // First buffer is ready
-				for(i=0; i<PRU_SHARED_BUFF_SIZE; i++){
-					fprintf(fp_out, "%d\n", ProcessingADC1(sharedMem_int[OFFSET_SHAREDRAM + 1 + i]));
-				}
-				target_buff = 2;
-				break;
-			}else if(sharedMem_int[OFFSET_SHAREDRAM] == 2 && target_buff == 2){ // Second buffer is ready
-				for(i=0; i<PRU_SHARED_BUFF_SIZE; i++){
-					fprintf(fp_out, "%d\n", ProcessingADC1(sharedMem_int[OFFSET_SHAREDRAM + PRU_SHARED_BUFF_SIZE + 1 + i]));
-				}
-				target_buff = 1;
-				break;
-			}
-		}
-
-		if(++cnt == CNT_ONE_SEC){
-			printf(".");
-			total_cnt += cnt;
-			cnt = 0;
-		}
-
-		if(total_cnt == CNT_ONE_SEC * sampling_period){
-			printf("\n\tINFO: Sampling completed ...\n");
-			break;
-		}
-	
-  }*/
-
-	//fclose(fp_out);
+  usleep(10000000);
+  *(sharedMem_int+1) = 1;
   printf("\tINFO: PRU completed transfer.\r\n");
   prussdrv_pru_clear_event (PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
-
+  printf("\n%d\n",*(sharedMem_int+1));
   /* Disable PRU*/
   prussdrv_pru_disable(PRU_NUM);
   prussdrv_exit();

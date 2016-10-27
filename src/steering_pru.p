@@ -1,13 +1,5 @@
-// Developed by Youngtae Jo in Kangwon National University (April-2014)
-
-// This program collects ADC from AIN0 with certain sampling rate.
-// The collected data are stored into PRU shared memory(buffer) first.
-// The host program(ADCCollector.c) will read the stored ADC data
-// This program uses double buffering technique. 
-// The host program can recognize the buffer status by buffer status variable
-// 0 means empty, 1 means first buffer is ready, 2 means second buffer is ready.
-// When each buffer is ready, host program read ADC data from the buffer.
-
+// Many Thanks to Youngtae Jo! https://groups.google.com/forum/#!topic/beagleboard/0a4tszlq2y06
+//Oluwatoni Ogunmade
 
 .origin 0 // offset of the start of the code in PRU memory
 .entrypoint START // program entry point, used by debugger only
@@ -15,7 +7,7 @@
 #include "steering_pru.hp"
 
 #define ADC_SAMPLE_NO 8
-#define SAMPLING_RATE 1000 //Sampling rate(1khz)
+#define SAMPLING_RATE 16000 //Sampling rate(1khz)
 #define DELAY_MICRO_SECONDS (1000000 / SAMPLING_RATE) //Delay by sampling rate
 #define CLOCK 200000000 // PRU is always clocked at 200MHz
 #define CLOCKS_PER_LOOP 2 // loop contains two instructions, one clock each
@@ -34,6 +26,7 @@
     CLR r30.t3    
 .endm
 
+//Motor movements
 .macro CLOCKWISE
     SET r30.t5
     CLR r30.t3
@@ -44,17 +37,22 @@
     SET r30.t3
 .endm
 
+//Read the current setpoint and the end condition
 .macro READ_SETPOINT
-    LBCO r0, CONST_PRUSHAREDRAM, 0, 4 ;first two bytes provide the steering setpoint
-//    LBB0 r1, CONST_PRUSHAREDRAM, 2, 2 ;second two bytes provide the mode
-    SUB r6, r0, 5
-    ADD r7, r0, 5
+    MOV r0, 0x00000000
+    LBBO r1, r0, 0, 4 //first two bytes provide the steering setpoint
+    MOV r0, 0x00000004
+    LBBO r2, r0, 0, 4
+    
+    QBEQ END, r2, 0x01//if the exit condition is selected exit the loop
+    SUB r6, r1, 80
+    ADD r7, r1, 80
 
 .endm
 
-
-.macro READADC ;reads the ADC a number of times and averages the values
-  MOV r4, ADC_SAMPLE_NO
+//reads the ADC a number of times and averages the values
+.macro READADC
+  MOV r4, 64
   MOV r5, 0
   
 READ:
@@ -65,13 +63,15 @@ READ:
       DELAY
         
       SUB r4, r4,1
-      QBEQ READ, r4, 0
-      LSR r5, r5, 3
+      QBNE READ, r4, 0
+      LSR r5, r5, 6//divide by 8
+
 .endm
 
 // Starting point
 START:
-    // Enable OCP master port
+   //ADC setup
+   // Enable OCP master port
     LBCO r0, CONST_PRUCFG, 4, 4
     CLR r0, r0, 4
     SBCO r0, CONST_PRUCFG, 4, 4
@@ -95,22 +95,27 @@ START:
     MOV r2, 0x44E0D064
     MOV r3, 0x00000001 //continuous mode
     SBBO r3, r2, 0, 4
-    
+
+STEER:
     READ_SETPOINT
     READADC
-
-    QBGT LEFT, r7,r5
-    QBLT RIGHT,r6,r5
+    
+    //decide what motion to execute based on the setpoint and the current measurement
+    QBLT LEFT, r6, r5
+    QBGT RIGHT, r7, r5
+    SWITCH_OFF
+    JMP STEER
 
 LEFT:
     CLOCKWISE
-    JMP END
+    JMP STEER
+
 RIGHT:
     ANTICLOCKWISE
-    JMP END
+    JMP STEER
+
 END:
-    ;SWITCH_OFF   
+    SWITCH_OFF   
     //Send event to host program
     MOV r31.b0, PRU0_ARM_INTERRUPT+16 
     HALT
-
