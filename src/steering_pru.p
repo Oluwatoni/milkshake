@@ -40,11 +40,11 @@
 //Read the current setpoint and the end condition
 .macro READ_SETPOINT
     MOV r0, 0x00000000
-    LBBO r1, r0, 0, 4 //first two bytes provide the steering setpoint
+    LBBO r1, r0, 0, 4
     MOV r0, 0x00000004
-    LBBO r2, r0, 0, 4
+    LBBO r9, r0, 0, 4
     
-    QBEQ END, r2, 0x01//if the exit condition is selected exit the loop
+    QBEQ END, r9, 0x01//if the exit condition is selected exit the loop
     SUB r6, r1, 80
     ADD r7, r1, 80
 
@@ -100,6 +100,7 @@ STEER:
     READ_SETPOINT
     READADC
     
+    QBEQ STEER, r9, 0x02
     //decide what motion to execute based on the setpoint and the current measurement
     QBLT LEFT, r6, r5
     QBGT RIGHT, r7, r5
