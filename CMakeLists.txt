@@ -114,10 +114,11 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 # include_directories(include)
-include_directories(
-  ${catkin_INCLUDE_DIRS}
-)
 
+include_directories(include
+                    ${catkin_INCLUDE_DIRS}
+                    ${Boost_INCLUDE_DIRS}
+)
 ## Declare a C++ library
 # add_library(milkshake
 #   src/${PROJECT_NAME}/milkshake.cpp
@@ -187,3 +188,7 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+add_executable(vehicle_control src/vehicle_control.cpp)
+target_link_libraries(vehicle_control ${catkin_LIBRARIES})
+#add_dependencies(vehicle_control vehicle_command_cpp)
