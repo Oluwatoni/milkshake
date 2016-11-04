@@ -116,9 +116,10 @@ catkin_package(
 # include_directories(include)
 
 include_directories(include
-                    ${catkin_INCLUDE_DIRS}
-                    ${Boost_INCLUDE_DIRS}
+  ${catkin_INCLUDE_DIRS}
 )
+
+add_definitions(-std=c++11)
 ## Declare a C++ library
 # add_library(milkshake
 #   src/${PROJECT_NAME}/milkshake.cpp
@@ -190,5 +191,5 @@ include_directories(include
 # catkin_add_nosetests(test)
 
 add_executable(vehicle_control src/vehicle_control.cpp)
+add_dependencies(vehicle_control milkshake_gencpp)
 target_link_libraries(vehicle_control ${catkin_LIBRARIES})
-#add_dependencies(vehicle_control vehicle_command_cpp)
