@@ -1,85 +1,114 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <unistd.h>
+#include <string.h>
+#include <time.h>
+
+#include <prussdrv.h>
+#include <pruss_intc_mapping.h>
 #include <sstream>
 
-/**
- * This tutorial demonstrates simple sending of messages over the ROS system.
- */
+#define PRU_NUM 	 0
+#define OFFSET_SHAREDRAM 2048		//equivalent with 0x00002000
+#define PRUSS0_SHARED_DATARAM    4
+
+//function declaration
+static void Enable_PRU();
+static void Enable_ADC();
+static unsigned int ProcessingADC1(unsigned int value);
+
+//global variable declarations
+static void *sharedMem;
+static unsigned int *sharedMem_int;
+const char SLOTS[] = "/sys/devices/bone_capemgr.9/slots";
+
 int main(int argc, char **argv)
 {
-  /**
-   * The ros::init() function needs to see argc and argv so that it can perform
-   * any ROS arguments and name remapping that were provided at the command line.
-   * For programmatic remappings you can use a different version of init() which takes
-   * remappings directly, but for most command-line programs, passing argc and argv is
-   * the easiest way to do it.  The third argument to init() is the name of the node.
-   *
-   * You must call one of the versions of ros::init() before using any other
-   * part of the ROS system.
-   */
+  unsigned int ret;
+  tpruss_intc_initdata pruss_intc_initdata = PRUSS_INTC_INITDATA;
+  Enable_PRU();
+  Enable_ADC();
+
   ros::init(argc, argv, "vehicle_control");
-
-  /**
-   * NodeHandle is the main access point to communications with the ROS system.
-   * The first NodeHandle constructed will fully initialize this node, and the last
-   * NodeHandle destructed will close down the node.
-   */
   ros::NodeHandle n("~");
-
-  /**
-   * The advertise() function is how you tell ROS that you want to
-   * publish on a given topic name. This invokes a call to the ROS
-   * master node, which keeps a registry of who is publishing and who
-   * is subscribing. After this advertise() call is made, the master
-   * node will notify anyone who is trying to subscribe to this topic name,
-   * and they will in turn negotiate a peer-to-peer connection with this
-   * node.  advertise() returns a Publisher object which allows you to
-   * publish messages on that topic through a call to publish().  Once
-   * all copies of the returned Publisher object are destroyed, the topic
-   * will be automatically unadvertised.
-   *
-   * The second parameter to advertise() is the size of the message queue
-   * used for publishing messages.  If messages are published more quickly
-   * than we can send them, the number here specifies how many messages to
-   * buffer up before throwing some away.
-   */
   ros::Publisher chatter_pub = n.advertise<std_msgs::String>("chatter", 1000);
 
   ros::Rate loop_rate(10);
 
-  /**
-   * A count of how many messages we have sent. This is used to create
-   * a unique string for each message.
-   */
-  int count = 0;
+ /* Initializing PRU */
+  prussdrv_init();
+  ret = prussdrv_open(PRU_EVTOUT_0);
+  if (ret){
+      printf("\tERROR: prussdrv_open open failed\n");
+      return (ret); 
+  }
+  prussdrv_pruintc_init(&pruss_intc_initdata);
+  printf("\tINFO: Initializing.\r\n");
+  	
+  /*runs the code for a short period of time with the steering motor disabled
+   to read from the ADC and clear the noise*/
+  printf("Writing to ADC\n");
+  prussdrv_map_prumem(PRUSS0_PRU0_DATARAM, &sharedMem);
+  sharedMem_int = (unsigned int* )sharedMem;
+  *(sharedMem_int+1) = 2;
+  prussdrv_exec_program (PRU_NUM, "./steering_pru.bin");
+  usleep(100000);
+  *(sharedMem_int+1) = 1;
+  printf("\tINFO: PRU completed transfer.\r\n");
+  prussdrv_pru_clear_event (PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
+
+  *(sharedMem_int+1) = 0;
+  prussdrv_exec_program (PRU_NUM, "./steering_pru.bin");
+
   while (ros::ok())
   {
-    /**
-     * This is a message object. You stuff it with data, and then publish it.
-     */
-    std_msgs::String msg;
-
-    std::stringstream ss;
-    ss << "hello world " << count;
-    msg.data = ss.str();
-
-    ROS_INFO("%s", msg.data.c_str());
-
-    /**
-     * The publish() function is how you send messages. The parameter
-     * is the message object. The type of this object must agree with the type
-     * given as a template parameter to the advertise<>() call, as was done
-     * in the constructor above.
-     */
-    chatter_pub.publish(msg);
-
+  
     ros::spinOnce();
 
     loop_rate.sleep();
-    ++count;
   }
-
+  //tells the PRU to halt
+  *(sharedMem_int+1) = 1;
+  printf("\tINFO: PRU disabled.\r\n");
+  prussdrv_pru_clear_event (PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);  
+  printf("\n%d\n",*(sharedMem_int+1));
+  /* Disable PRU*/
+  prussdrv_pru_disable(PRU_NUM);
+  prussdrv_exit();
 
   return 0;
+}
+
+/* Enable ADC */
+static void Enable_ADC()
+{
+  FILE *ain;
+  ain = fopen(SLOTS, "w");
+  if(!ain){
+    printf("\tERROR: $SLOTS open failed\n");
+    return;
+  }
+  fseek(ain, 0, SEEK_SET);
+  fprintf(ain, "cape-bone-iio");
+  fflush(ain);
+}
+
+/* Enable PRU */
+static void Enable_PRU()
+{
+  FILE *ain;
+  ain = fopen(SLOTS, "w");
+  if(!ain){
+    printf("\tERROR: $SLOTS open failed\n");
+    return;
+  }
+  fseek(ain, 0, SEEK_SET);
+  fprintf(ain, "PRU-STEERING");
+  fflush(ain);
 }
