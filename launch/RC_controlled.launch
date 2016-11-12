@@ -1,0 +1,6 @@
+<launch>
+    <node pkg="ps3joy" name="ps3joy" type="ps3joy.py"/>
+    <node pkg="joy" name="joy_node" type="joy_node"/>
+    <node pkg="milkshake" name="setup_Steering_PRU" type="setup_Steering_PRU.sh" output="screen"/>
+    <node pkg="milkshake" name="vehicle_control" type="vehicle_control" output="screen"/>
+</launch>
