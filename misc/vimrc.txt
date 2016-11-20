@@ -1,0 +1,12 @@
+set modeline
+set nowrap
+set hlsearch
+set backup
+set shiftwidth=4
+set expandtab
+set cindent
+set smartindent
+set noequalalways
+set tabstop=4
+set ruler
+set ic

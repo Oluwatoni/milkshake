@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
   ros::NodeHandle nh;
 //  ros::Publisher throttle_pub = nh.advertise<std_msgs::Int16>("throttle", 1);
 //  ros::Publisher steering_pub = nh.advertise<std_msgs::Float32>("steering", 1);
-  ros::Subscriber sub = nh.subscribe("joy", 1, ps3data_callback);
+  ros::Subscriber sub = nh.subscribe<sensor_msg::Joy>("joy", 1, ps3data_callback);
 
   ros::spin();
 

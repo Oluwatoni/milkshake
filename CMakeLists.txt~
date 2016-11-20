@@ -193,6 +193,3 @@ INCLUDE_DIRECTORIES(/usr/lib)
 add_executable(vehicle_control src/vehicle_control.cpp)#../../../../../usr/include/prussdrv.h /usr/include/pruss_intc_mapping.h)
 add_dependencies(vehicle_control milkshake_gencpp)
 target_link_libraries(vehicle_control ${catkin_LIBRARIES} prussdrv)
-
-add_executable(master_node src/master/master_node.cpp)
-target_link_libraries(master_node ${catkin_LIBRARIES})
