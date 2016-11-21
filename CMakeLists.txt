@@ -189,7 +189,7 @@ add_definitions(-std=c++11)
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
-
-add_executable(vehicle_control src/vehicle_control.cpp)
+INCLUDE_DIRECTORIES(/usr/lib)
+add_executable(vehicle_control src/vehicle_control.cpp)#../../../../../usr/include/prussdrv.h /usr/include/pruss_intc_mapping.h)
 add_dependencies(vehicle_control milkshake_gencpp)
-target_link_libraries(vehicle_control ${catkin_LIBRARIES})
+target_link_libraries(vehicle_control ${catkin_LIBRARIES} prussdrv)
