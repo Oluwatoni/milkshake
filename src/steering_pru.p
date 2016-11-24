@@ -28,13 +28,13 @@
 
 //Motor movements
 .macro CLOCKWISE
-    SET r30.t5
+    CLR r30.t5
     CLR r30.t3
 .endm
 
 .macro ANTICLOCKWISE
     CLR r30.t5
-    SET r30.t3
+    CLR r30.t3
 .endm
 
 //Read the current setpoint and the end condition

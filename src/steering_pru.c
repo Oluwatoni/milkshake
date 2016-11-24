@@ -40,7 +40,7 @@ static unsigned int ProcessingADC1(unsigned int value);
 ******************************************************************************/
 static void *sharedMem;
 static unsigned int *sharedMem_int;
-const char SLOTS[] = "/sys/devices/bone_capemgr.9/slots";
+const char SLOTS[] = "/sys/devices/platform/bone_capemgr/slots";
 
 /******************************************************************************
 * Main                                                                        * 
@@ -68,6 +68,7 @@ int main (int argc, char* argv[])
 
   /* Initializing PRU */
   prussdrv_init();
+//  prussdrv_pru_reset ( 0 );
   ret = prussdrv_open(PRU_EVTOUT_0);
   if (ret){
       printf("\tERROR: prussdrv_open open failed\n");
@@ -83,7 +84,7 @@ int main (int argc, char* argv[])
   sharedMem_int = (unsigned int* )sharedMem;
   *(sharedMem_int+1) = 2;
   prussdrv_exec_program (PRU_NUM, "./steering_pru.bin");
-  usleep(100000);
+  usleep(1000000);
   *(sharedMem_int+1) = 1;
   printf("\tINFO: PRU completed transfer.\r\n");
   prussdrv_pru_clear_event (PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
@@ -117,7 +118,7 @@ static void Enable_ADC()
 		return -1;
 	}
 	fseek(ain, 0, SEEK_SET);
-	fprintf(ain, "cape-bone-iio");
+	fprintf(ain, "BB-ADC");
 	fflush(ain);
 }
 
