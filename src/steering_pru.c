@@ -61,10 +61,10 @@ int main (int argc, char* argv[])
 
   sampling_period = atoi(argv[1]);
 
-  /* Enable PRU */
-  Enable_PRU();
   /* Enable ADC */
   Enable_ADC();
+  /* Enable PRU */
+  Enable_PRU();
 
   /* Initializing PRU */
   prussdrv_init();
@@ -87,20 +87,36 @@ int main (int argc, char* argv[])
   usleep(1000000);
   *(sharedMem_int+1) = 1;
   printf("\tINFO: PRU completed transfer.\r\n");
-  prussdrv_pru_clear_event (PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
+  prussdrv_pru_wait_event(PRU_EVTOUT_0);  
+  prussdrv_pru_disable(PRU_NUM);
+  prussdrv_exit();
   
+  prussdrv_init();
+  ret = prussdrv_open(PRU_EVTOUT_0);
+  if (ret){
+      printf("\tERROR: prussdrv_open open failed\n");
+      return (ret); 
+  }
+  prussdrv_pruintc_init(&pruss_intc_initdata);
+  printf("\tINFO: Initializing.\r\n");
+  	
+  /* Executing PRU. */
+  printf("Writing to ADC\n");
+  prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, &sampling_period, 4);
+  prussdrv_map_prumem(PRUSS0_PRU0_DATARAM, &sharedMem);
+  sharedMem_int = (unsigned int* )sharedMem;
   *(sharedMem_int+1) = 0;
   prussdrv_exec_program (PRU_NUM, "./steering_pru.bin");
   usleep(10000000);
   *(sharedMem_int+1) = 1;
   printf("\tINFO: PRU completed transfer.\r\n");
-  prussdrv_pru_clear_event (PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);  
+  usleep(10000);
+  prussdrv_pru_wait_event(PRU_EVTOUT_0);  
 
   printf("\n%d\n",*(sharedMem_int+1));
   /* Disable PRU*/
   prussdrv_pru_disable(PRU_NUM);
   prussdrv_exit();
-
   return(0);
 }
 

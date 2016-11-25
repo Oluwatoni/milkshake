@@ -12,6 +12,8 @@
 #define CLOCK 200000000 // PRU is always clocked at 200MHz
 #define CLOCKS_PER_LOOP 2 // loop contains two instructions, one clock each
 #define DELAYCOUNT DELAY_MICRO_SECONDS * CLOCK / CLOCKS_PER_LOOP / 1000 / 1000 * 3
+#define PRU_EVTOUT_0 3
+#define PRU0_R31_VEC_VALID 32
 
 .macro DELAY
     MOV r10, DELAYCOUNT
@@ -28,13 +30,13 @@
 
 //Motor movements
 .macro CLOCKWISE
-    CLR r30.t5
+    SET r30.t5
     CLR r30.t3
 .endm
 
 .macro ANTICLOCKWISE
     CLR r30.t5
-    CLR r30.t3
+    SET r30.t3
 .endm
 
 //Read the current setpoint and the end condition
@@ -70,6 +72,7 @@ READ:
 
 // Starting point
 START:
+    SWITCH_OFF
    //ADC setup
    // Enable OCP master port
     LBCO r0, CONST_PRUCFG, 4, 4
@@ -118,5 +121,5 @@ RIGHT:
 END:
     SWITCH_OFF   
     //Send event to host program
-    MOV r31.b0, PRU0_ARM_INTERRUPT+16 
+    MOV r31.b0, PRU0_R31_VEC_VALID | PRU_EVTOUT_0 
     HALT
