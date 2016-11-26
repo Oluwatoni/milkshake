@@ -6,7 +6,7 @@
 
 #include "steering_pru.hp"
 
-#define ADC_SAMPLE_NO 8
+#define ADC_SAMPLE_NO 64
 #define SAMPLING_RATE 16000 //Sampling rate(1khz)
 #define DELAY_MICRO_SECONDS (1000000 / SAMPLING_RATE) //Delay by sampling rate
 #define CLOCK 200000000 // PRU is always clocked at 200MHz
@@ -14,6 +14,9 @@
 #define DELAYCOUNT DELAY_MICRO_SECONDS * CLOCK / CLOCKS_PER_LOOP / 1000 / 1000 * 3
 #define PRU_EVTOUT_0 3
 #define PRU0_R31_VEC_VALID 32
+#define BOUNDS 80
+#define MAX_STEERING (2600 + BOUNDS)
+#define MIN_STEERING (1500 - BOUNDS)
 
 .macro DELAY
     MOV r10, DELAYCOUNT
@@ -47,14 +50,14 @@
     LBBO r9, r0, 0, 4
     
     QBEQ END, r9, 0x01//if the exit condition is selected exit the loop
-    SUB r6, r1, 80
-    ADD r7, r1, 80
+    SUB r6, r1, BOUNDS
+    ADD r7, r1, BOUNDS
 
 .endm
 
 //reads the ADC a number of times and averages the values
 .macro READADC
-  MOV r4, 64
+  MOV r4, ADC_SAMPLE_NO
   MOV r5, 0
   
 READ:
@@ -99,11 +102,24 @@ START:
     MOV r3, 0x00000001 //continuous mode
     SBBO r3, r2, 0, 4
 
+    //set the min and max values
+    MOV r11, MIN_STEERING
+    MOV r12, MAX_STEERING
+
+// Helps prevent the steering from trying to go past the max and min values
+PRESTEER:
+    SWITCH_OFF
+
 STEER:
     READ_SETPOINT
     READADC
     
     QBEQ STEER, r9, 0x02
+
+    //switch the motors off if the setpoint is outside of the steering range
+    QBLT PRESTEER, r11, r6
+    QBGT PRESTEER, r12, r7
+    
     //decide what motion to execute based on the setpoint and the current measurement
     QBLT LEFT, r6, r5
     QBGT RIGHT, r7, r5
