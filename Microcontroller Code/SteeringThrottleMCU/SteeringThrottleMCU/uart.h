@@ -17,10 +17,12 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <stdint-gcc.h>
+#include <math.h>
 
 void UART_Init( unsigned int);
 void UART_Transmit( unsigned char data );
 unsigned char UART_Receive( void );
 void printCharArray(char array[], uint8_t size);
+void printNumber(uint16_t value, uint8_t digits);
 
 #endif /* UART_H_ */

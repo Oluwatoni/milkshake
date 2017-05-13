@@ -23,6 +23,15 @@ void UART_Transmit( unsigned char data ){
   /* Put data into buffer, sends the data */
   UDR0 = data;
 }
+void printNumber(uint16_t value, uint8_t digits){
+  uint16_t remainder;
+  while(digits--){
+    remainder = (int)(value / pow(10,digits));
+    UART_Transmit(remainder + '0');
+    value -= remainder * pow(10,digits);
+  }    
+  UART_Transmit('\n');
+}
 
 unsigned char UART_Receive( void ){
   /* Wait for data to be received */
