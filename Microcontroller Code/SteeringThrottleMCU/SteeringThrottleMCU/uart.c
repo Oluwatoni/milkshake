@@ -25,6 +25,7 @@ void UART_Transmit( unsigned char data ){
 }
 void printNumber(uint16_t value, uint8_t digits){
   uint16_t remainder;
+  //value = (uint16_t) value;
   while(digits--){
     remainder = (int)(value / pow(10,digits));
     UART_Transmit(remainder + '0');

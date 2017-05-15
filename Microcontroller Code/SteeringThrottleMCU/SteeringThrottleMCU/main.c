@@ -15,17 +15,11 @@
 
 int main(void){
     setupSteeringThrottle();
-    //set up the timer interrupts for the steering and encoder
     //set up the SPI slave to receive data from the BBB
-    //set up the UART for debugging purposes and GPS
     UART_Init(MYUBRR);
+    setSteeringAngle(0);
     sei();
-    
     while (1) {
-      printNumber(ReadADC(),4);
-      //UART_Transmit(ReadADC() & 0xFF);
-      //UART_Transmit('\n');
-      _delay_us(100000);
     }
 }
 
